@@ -10,7 +10,7 @@ import (
 )
 
 type TarantulaModelInterface interface {
-	Insert(species string, name string, feed_interval_days int, notify bool, img_url string, owner_id int) (int, error)
+	Insert(species string, name string, feed_interval_days int, notify bool, img_url string, owner_id int, next_feed_date time.Time) (int, error)
 	Get(id int) (*Tarantula, error)
 }
 
@@ -18,6 +18,7 @@ type Tarantula struct {
 	ID                 int
 	Species            string
 	Name               string
+	Next_Feed_Date     time.Time
 	Feed_Interval_Days int
 	Notify             bool
 	Img_URL            string
@@ -29,16 +30,16 @@ type TarantulaModel struct {
 	DB *pgxpool.Pool
 }
 
-func (m *TarantulaModel) Insert(species string, name string, feed_interval_days int, notify bool, img_url string, owner_id int) (int, error) {
+func (m *TarantulaModel) Insert(species string, name string, feed_interval_days int, notify bool, img_url string, owner_id int, next_feed_date time.Time) (int, error) {
 
 	stmt := `
-			INSERT INTO tarantulas (species, name, feed_interval_days, notify, img_url, owner_id)
-			VALUES($1, $2, $3, $4, $5, $6)
+			INSERT INTO tarantulas (species, name, feed_interval_days, notify, img_url, owner_id, next_feed_date)
+			VALUES($1, $2, $3, $4, $5, $6, $7)
 			RETURNING id
 			`
 
 	var id int
-	err := m.DB.QueryRow(context.Background(), stmt, species, name, feed_interval_days, notify, img_url, owner_id).Scan(&id)
+	err := m.DB.QueryRow(context.Background(), stmt, species, name, feed_interval_days, notify, img_url, owner_id, next_feed_date).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
@@ -47,14 +48,14 @@ func (m *TarantulaModel) Insert(species string, name string, feed_interval_days 
 }
 
 func (m *TarantulaModel) Get(id int) (*Tarantula, error) {
-	stmt := `SELECT id, species, name, feed_interval_days, notify, img_url, owner_id FROM tarantulas
+	stmt := `SELECT id, species, name, feed_interval_days, notify, img_url, owner_id, next_feed_date FROM tarantulas
 	WHERE id = $1`
 
 	row := m.DB.QueryRow(context.Background(), stmt, id)
 
 	s := &Tarantula{}
 
-	err := row.Scan(&s.ID, &s.Species, &s.Name, &s.Feed_Interval_Days, &s.Notify, &s.Img_URL, &s.Owner_ID)
+	err := row.Scan(&s.ID, &s.Species, &s.Name, &s.Feed_Interval_Days, &s.Notify, &s.Img_URL, &s.Owner_ID, &s.Next_Feed_Date)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord

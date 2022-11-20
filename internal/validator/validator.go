@@ -3,6 +3,7 @@ package validator
 import (
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -38,6 +39,14 @@ func (v *Validator) CheckField(ok bool, key, message string) {
 
 func NotBlank(value string) bool {
 	return strings.TrimSpace(value) != ""
+}
+
+func NotPast(value time.Time) bool {
+	return time.Now().Before(value)
+}
+
+func IsPositive(value int) bool {
+	return value > 0
 }
 
 func MaxChars(value string, n int) bool {

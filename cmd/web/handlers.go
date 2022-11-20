@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mitchellb613/tarantulabox.git/internal/models"
 	"github.com/mitchellb613/tarantulabox.git/internal/validator"
@@ -136,6 +137,8 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 type tarantulaCreateForm struct {
 	Species             string `form:"species"`
 	Name                string `form:"name"`
+	Next_Feed_Date      string `form:"next_feed_date"`
+	Timezone_Offset     string `form:"timezone_offset"`
 	Feed_Interval_Days  int    `form:"feed_interval_days"`
 	Notify              bool   `form:"notify"`
 	validator.Validator `form:"-"`
@@ -160,8 +163,22 @@ func (app *application) tarantulaCreatePost(w http.ResponseWriter, r *http.Reque
 
 	form.CheckField(validator.NotBlank(form.Species), "species", "This field cannot be blank")
 	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.Next_Feed_Date), "next_feed_date", "This field cannot be blank")
 	form.CheckField(validator.PermittedValue(form.Notify, true, false), "notify", "This field must true or false")
+	form.CheckField(validator.IsPositive(form.Feed_Interval_Days), "feed_interval_days", "This field must be a positive value")
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "create.html", data)
+		return
+	}
 
+	feed_date, err := time.Parse("2006-01-02T15:04Z07:00", form.Next_Feed_Date+form.Timezone_Offset)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	form.CheckField(validator.NotPast(feed_date), "next_feed_date", "This field cannot be a past date")
 	if !form.Valid() {
 		data := app.newTemplateData(r)
 		data.Form = form
@@ -221,7 +238,7 @@ func (app *application) tarantulaCreatePost(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	_, err = app.tarantulas.Insert(form.Species, form.Name, form.Feed_Interval_Days, form.Notify, newFileURL, owner_id)
+	_, err = app.tarantulas.Insert(form.Species, form.Name, form.Feed_Interval_Days, form.Notify, newFileURL, owner_id, feed_date)
 	if err != nil {
 		app.serverError(w, err)
 		return
