@@ -20,6 +20,8 @@ import (
 	"github.com/mitchellb613/tarantulabox.git/internal/models"
 )
 
+const MAX_UPLOAD_SIZE int64 = 50 * 1024 * 1024
+
 type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger

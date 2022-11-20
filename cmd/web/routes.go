@@ -32,6 +32,6 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodGet, "/tarantula/create", protected.ThenFunc(app.tarantulaCreate))
 	router.Handler(http.MethodPost, "/tarantula/create", protected.ThenFunc(app.tarantulaCreatePost))
 
-	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
+	standard := alice.New(app.recoverPanic, app.logRequest, app.enforceMaxRequestSize, secureHeaders)
 	return standard.Then(router)
 }

@@ -150,12 +150,11 @@ func (app *application) tarantulaCreate(w http.ResponseWriter, r *http.Request) 
 }
 
 func (app *application) tarantulaCreatePost(w http.ResponseWriter, r *http.Request) {
-	const MAX_UPLOAD_SIZE int64 = 1024 * 1024
 	var form tarantulaCreateForm
-	r.Body = http.MaxBytesReader(w, r.Body, MAX_UPLOAD_SIZE) //doesn't do anything??
+	// r.Body = http.MaxBytesReader(w, r.Body, MAX_UPLOAD_SIZE) //doesn't do anything?? using enforceMaxRequestSize middleware for now instead
 	err := app.decodeMultipartPostForm(r, &form, MAX_UPLOAD_SIZE)
 	if err != nil {
-		app.clientError(w, http.StatusBadRequest)
+		app.serverError(w, err)
 		return
 	}
 

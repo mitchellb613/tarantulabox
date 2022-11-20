@@ -78,3 +78,7 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (app *application) enforceMaxRequestSize(next http.Handler) http.Handler {
+	return http.MaxBytesHandler(next, MAX_UPLOAD_SIZE)
+}
