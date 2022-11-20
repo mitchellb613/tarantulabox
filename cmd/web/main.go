@@ -13,6 +13,7 @@ import (
 
 	"github.com/alexedwards/scs/pgxstore"
 	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/mitchellb613/tarantulabox.git/internal/models"
@@ -23,6 +24,7 @@ type application struct {
 	infoLog        *log.Logger
 	tarantulas     models.TarantulaModelInterface
 	users          models.UserModelInterface
+	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
 	templateCache  map[string]*template.Template
 }
@@ -51,6 +53,8 @@ func main() {
 		errorLog.Fatal(err)
 	}
 
+	formDecoder := form.NewDecoder()
+
 	sessionManager := scs.New()
 	sessionManager.Store = pgxstore.New(db)
 	sessionManager.Lifetime = 12 * time.Hour
@@ -61,6 +65,7 @@ func main() {
 		infoLog:        infoLog,
 		tarantulas:     &models.TarantulaModel{DB: db},
 		users:          &models.UserModel{DB: db},
+		formDecoder:    formDecoder,
 		sessionManager: sessionManager,
 		templateCache:  templateCache,
 	}

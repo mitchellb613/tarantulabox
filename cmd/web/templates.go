@@ -10,6 +10,7 @@ import (
 
 type templateData struct {
 	CurrentYear     int
+	Form            any
 	Flash           string
 	IsAuthenticated bool
 	CSRFToken       string
@@ -30,7 +31,7 @@ func newTemplateCache() (map[string]*template.Template, error) {
 
 		patterns := []string{
 			"html/base.html",
-			// "html/partials/*.html",
+			"html/partials/*.html",
 			page,
 		}
 
