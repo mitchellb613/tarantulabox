@@ -2,7 +2,11 @@ package main
 
 import (
 	"errors"
+	"io"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/mitchellb613/tarantulabox.git/internal/models"
 	"github.com/mitchellb613/tarantulabox.git/internal/validator"
@@ -126,5 +130,103 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 	app.sessionManager.Remove(r.Context(), "authenticatedUserID")
 	app.sessionManager.Put(r.Context(), "flash", "You've been logged out successfully!")
 
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+type tarantulaCreateForm struct {
+	Species             string `form:"species"`
+	Name                string `form:"name"`
+	Feed_Interval_Days  int    `form:"feed_interval_days"`
+	Notify              bool   `form:"notify"`
+	validator.Validator `form:"-"`
+}
+
+func (app *application) tarantulaCreate(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	data.Form = tarantulaCreateForm{
+		Notify: false,
+	}
+	app.render(w, http.StatusOK, "create.html", data)
+}
+
+func (app *application) tarantulaCreatePost(w http.ResponseWriter, r *http.Request) {
+	const MAX_UPLOAD_SIZE int64 = 1024 * 1024
+	var form tarantulaCreateForm
+	r.Body = http.MaxBytesReader(w, r.Body, MAX_UPLOAD_SIZE) //doesn't do anything??
+	err := app.decodeMultipartPostForm(r, &form, MAX_UPLOAD_SIZE)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	form.CheckField(validator.NotBlank(form.Species), "species", "This field cannot be blank")
+	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
+	form.CheckField(validator.PermittedValue(form.Notify, true, false), "notify", "This field must true or false")
+
+	if !form.Valid() {
+		data := app.newTemplateData(r)
+		data.Form = form
+		app.render(w, http.StatusUnprocessableEntity, "create.html", data)
+		return
+	}
+
+	file, handler, err := r.FormFile("tarantula_image")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	defer file.Close()
+
+	buff := make([]byte, 512)
+	_, err = file.Read(buff)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	filetype := http.DetectContentType(buff)
+	if filetype != "image/jpeg" && filetype != "image/png" {
+		http.Error(w, "The provided file format is not allowed. Please upload a JPEG or PNG image", http.StatusBadRequest)
+		return
+	}
+
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	owner_id := app.sessionManager.Get(r.Context(), "authenticatedUserID").(int)
+
+	owner_id_string := strconv.Itoa(owner_id)
+
+	err = os.MkdirAll("./uploads/"+owner_id_string, os.ModePerm)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	fileExtension := "." + strings.Split(handler.Filename, ".")[1]
+	newFileName := randSeq(24) + fileExtension
+	newFileURL := "/uploads/" + owner_id_string + "/" + newFileName
+
+	dst, err := os.Create("." + newFileURL)
+	defer dst.Close()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	if _, err := io.Copy(dst, file); err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	_, err = app.tarantulas.Insert(form.Species, form.Name, form.Feed_Interval_Days, form.Notify, newFileURL, owner_id)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	app.sessionManager.Put(r.Context(), "flash", "Tarantula successfully created!")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

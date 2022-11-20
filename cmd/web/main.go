@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -30,6 +31,8 @@ type application struct {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	err := godotenv.Load()
 
 	if err != nil {
