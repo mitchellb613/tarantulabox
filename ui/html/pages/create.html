@@ -46,9 +46,17 @@
       />
       No
     </div>
-    <input type="file" id="myFile" name="tarantula_image" />
+    <input
+      type="file"
+      id="tarantulaImage"
+      name="tarantula_image"
+      accept="image/png, image/jpeg"
+    />
     <div>
       <input type="submit" value="Add Tarantula" />
     </div>
   </form>
+{{ end }}
+{{ define "script" }}
+  <script src="/static/js/create.js" type="text/javascript"></script>
 {{ end }}
