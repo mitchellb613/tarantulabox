@@ -9,8 +9,10 @@ import (
 )
 
 type templateData struct {
-	CurrentYear int
-	CSRFToken   string
+	CurrentYear     int
+	Flash           string
+	IsAuthenticated bool
+	CSRFToken       string
 }
 
 var functions = template.FuncMap{}
