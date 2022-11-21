@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-playground/form/v4"
 	"github.com/justinas/nosurf"
+	"github.com/mitchellb613/tarantulabox.git/internal/models"
 )
 
 func (app *application) serverError(w http.ResponseWriter, err error) {
@@ -93,6 +94,15 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 
 	w.WriteHeader(status)
 	buf.WriteTo(w)
+}
+
+func (app *application) resetTimer(t *time.Timer) {
+	next, _ := app.tarantulas.GetNotificationBatch(1)
+	app.notificationTimer.Reset(time.Until(next[0].NotifyTime))
+}
+
+func (app *application) sendNotifications(batch []*models.Notification) {
+	fmt.Printf("NOTIFY!")
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

@@ -23,13 +23,14 @@ import (
 const MAX_UPLOAD_SIZE int64 = 50 * 1024 * 1024
 
 type application struct {
-	errorLog       *log.Logger
-	infoLog        *log.Logger
-	tarantulas     models.TarantulaModelInterface
-	users          models.UserModelInterface
-	formDecoder    *form.Decoder
-	sessionManager *scs.SessionManager
-	templateCache  map[string]*template.Template
+	errorLog          *log.Logger
+	infoLog           *log.Logger
+	tarantulas        models.TarantulaModelInterface
+	users             models.UserModelInterface
+	formDecoder       *form.Decoder
+	sessionManager    *scs.SessionManager
+	templateCache     map[string]*template.Template
+	notificationTimer *time.Timer
 }
 
 func main() {
@@ -66,13 +67,14 @@ func main() {
 	sessionManager.Cookie.Secure = true
 
 	app := &application{
-		errorLog:       errorLog,
-		infoLog:        infoLog,
-		tarantulas:     &models.TarantulaModel{DB: db},
-		users:          &models.UserModel{DB: db},
-		formDecoder:    formDecoder,
-		sessionManager: sessionManager,
-		templateCache:  templateCache,
+		errorLog:          errorLog,
+		infoLog:           infoLog,
+		tarantulas:        &models.TarantulaModel{DB: db},
+		users:             &models.UserModel{DB: db},
+		formDecoder:       formDecoder,
+		sessionManager:    sessionManager,
+		templateCache:     templateCache,
+		notificationTimer: time.NewTimer(0),
 	}
 
 	tlsConfig := &tls.Config{
@@ -86,6 +88,21 @@ func main() {
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		},
 	}
+
+	go func() {
+		for range app.notificationTimer.C {
+			first, _ := app.tarantulas.GetNotificationBatch(1)
+			second, _ := app.tarantulas.GetNotificationBatch(2)
+
+			if time.Until(first[0].NotifyTime) > 1*time.Second {
+				app.notificationTimer.Reset(time.Until(first[0].NotifyTime))
+				continue
+			}
+
+			go app.sendNotifications(first)
+			app.notificationTimer.Reset(time.Until(second[0].NotifyTime))
+		}
+	}()
 
 	srv := &http.Server{
 		Addr:         *addr,

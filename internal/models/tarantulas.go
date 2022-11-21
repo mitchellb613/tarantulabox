@@ -12,6 +12,7 @@ import (
 type TarantulaModelInterface interface {
 	Insert(species string, name string, feed_interval_days int, notify bool, img_url string, owner_id int, next_feed_date time.Time) (int, error)
 	Get(id int) (*Tarantula, error)
+	GetNotificationBatch(n int) ([]*Notification, error)
 }
 
 type Tarantula struct {
@@ -65,4 +66,31 @@ func (m *TarantulaModel) Get(id int) (*Tarantula, error) {
 	}
 
 	return s, nil
+}
+
+type Notification struct {
+	Tarantula_ID int
+	NotifyTime   time.Time
+}
+
+func (m *TarantulaModel) GetNotificationBatch(n int) ([]*Notification, error) {
+	stmt := `WITH cte AS (
+		SELECT *, DENSE_RANK() OVER (
+		order by abs(extract(epoch from (next_feed_date - now())))) rnk
+		FROM tarantulas
+	  )
+	  
+	  SELECT id, next_feed_date, rnk
+	  FROM cte
+	  WHERE rnk = $1
+	`
+	rows, err := m.DB.Query(context.Background(), stmt, n)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	notifications := []*Notification{}
+
+	return notifications, nil
 }
