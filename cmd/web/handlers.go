@@ -188,7 +188,7 @@ func (app *application) tarantulaCreatePost(w http.ResponseWriter, r *http.Reque
 
 	file, handler, err := r.FormFile("tarantula_image")
 	if err != nil {
-		app.serverError(w, err)
+		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
