@@ -107,7 +107,7 @@ func main() {
 				continue
 			}
 
-			go app.sendNotification(nextTwo[0])
+			app.sendNotification(nextTwo[0])
 
 			if len(nextTwo) < 2 {
 				app.notificationTimer.Reset(1e18)
