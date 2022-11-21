@@ -243,6 +243,7 @@ func (app *application) tarantulaCreatePost(w http.ResponseWriter, r *http.Reque
 		app.serverError(w, err)
 		return
 	}
+	app.resetTimer()
 	app.sessionManager.Put(r.Context(), "flash", "Tarantula successfully created!")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

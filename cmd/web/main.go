@@ -91,16 +91,29 @@ func main() {
 
 	go func() {
 		for range app.notificationTimer.C {
-			first, _ := app.tarantulas.GetNotificationBatch(1)
-			second, _ := app.tarantulas.GetNotificationBatch(2)
+			nextTwo, err := app.tarantulas.GetNotifications(2)
+			if err != nil {
+				fmt.Printf(err.Error())
+				return
+			}
 
-			if time.Until(first[0].NotifyTime) > 1*time.Second {
-				app.notificationTimer.Reset(time.Until(first[0].NotifyTime))
+			if len(nextTwo) < 1 {
+				app.notificationTimer.Reset(1e18)
 				continue
 			}
 
-			go app.sendNotifications(first)
-			app.notificationTimer.Reset(time.Until(second[0].NotifyTime))
+			if time.Until(nextTwo[0].NotifyTime) > 1*time.Second {
+				app.notificationTimer.Reset(time.Until(nextTwo[0].NotifyTime))
+				continue
+			}
+
+			go app.sendNotification(nextTwo[0])
+
+			if len(nextTwo) < 2 {
+				app.notificationTimer.Reset(1e18)
+				continue
+			}
+			app.notificationTimer.Reset(time.Until(nextTwo[1].NotifyTime))
 		}
 	}()
 

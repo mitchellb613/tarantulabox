@@ -96,13 +96,17 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 	buf.WriteTo(w)
 }
 
-func (app *application) resetTimer(t *time.Timer) {
-	next, _ := app.tarantulas.GetNotificationBatch(1)
+func (app *application) resetTimer() {
+	next, _ := app.tarantulas.GetNotifications(1)
 	app.notificationTimer.Reset(time.Until(next[0].NotifyTime))
 }
 
-func (app *application) sendNotifications(batch []*models.Notification) {
+func (app *application) sendNotification(n *models.Notification) {
 	fmt.Printf("NOTIFY!")
+	err := app.tarantulas.UpdateNextFeedDate(n)
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

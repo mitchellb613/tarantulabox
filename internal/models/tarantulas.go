@@ -12,7 +12,8 @@ import (
 type TarantulaModelInterface interface {
 	Insert(species string, name string, feed_interval_days int, notify bool, img_url string, owner_id int, next_feed_date time.Time) (int, error)
 	Get(id int) (*Tarantula, error)
-	GetNotificationBatch(n int) ([]*Notification, error)
+	GetNotifications(n int) ([]*Notification, error)
+	UpdateNextFeedDate(n *Notification) error
 }
 
 type Tarantula struct {
@@ -69,20 +70,16 @@ func (m *TarantulaModel) Get(id int) (*Tarantula, error) {
 }
 
 type Notification struct {
-	Tarantula_ID int
-	NotifyTime   time.Time
+	Tarantula_ID       int
+	NotifyTime         time.Time
+	Feed_Interval_Days int
 }
 
-func (m *TarantulaModel) GetNotificationBatch(n int) ([]*Notification, error) {
-	stmt := `WITH cte AS (
-		SELECT *, DENSE_RANK() OVER (
-		order by abs(extract(epoch from (next_feed_date - now())))) rnk
-		FROM tarantulas
-	  )
-	  
-	  SELECT id, next_feed_date, rnk
-	  FROM cte
-	  WHERE rnk = $1
+func (m *TarantulaModel) GetNotifications(n int) ([]*Notification, error) {
+	stmt := `select id, next_feed_date, feed_interval_days
+	from tarantulas
+	order by next_feed_date
+	limit $1
 	`
 	rows, err := m.DB.Query(context.Background(), stmt, n)
 	if err != nil {
@@ -92,5 +89,32 @@ func (m *TarantulaModel) GetNotificationBatch(n int) ([]*Notification, error) {
 
 	notifications := []*Notification{}
 
+	for rows.Next() {
+		n := &Notification{}
+
+		err = rows.Scan(&n.Tarantula_ID, &n.NotifyTime, &n.Feed_Interval_Days)
+		if err != nil {
+			return nil, err
+		}
+
+		notifications = append(notifications, n)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return notifications, nil
+}
+
+func (m *TarantulaModel) UpdateNextFeedDate(n *Notification) error {
+	stmt := `update tarantulas
+	set next_feed_date = $1
+	where id = $2
+	`
+	_, err := m.DB.Exec(context.Background(), stmt, n.NotifyTime.AddDate(0, 0, n.Feed_Interval_Days), n.Tarantula_ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
